@@ -35,7 +35,7 @@ const CONFIG = {
     linesBefore: ["Before we get to the sweet stuff...", "There's a note waiting for you."],
     openButtonText: "Open Letter ✉️",
     message:
-`Happy Birthday, legend! 🎉
+      `Happy Birthday, legend! 🎉
 
 Through all the late-night talks, wild plans, inside jokes, and endless laughs, having a friend like you makes life a million times better. 
 
@@ -90,14 +90,14 @@ Hope this year brings you all the success, happiness, and chaotic fun you deserv
     linesBefore: ["Alright...", "The ultimate birthday box is right here.", "Ready for the big reveal?"],
     openButtonText: "Open Gift Box 🎁",
     letter:
-`Dear Birthday Boy,
+      `Dear Birthday Boy,
 
 Happy Birthday! 🎉
 
 I wanted to make something unique just for you today because you deserve the absolute best. Thank you for being such an incredible friend, for all the laughter, and for all the unforgettable moments we've shared.
 
 May this new year of your life be filled with massive wins, great health, infinite joy, and everything you're aiming for. Never stop being the awesome person you are!`,
-    signOff: "Happy Birthday once again, my friend! ❤️✨"
+    signOff: "Happy Birthday once again, bestuuuuuuu! ❤️✨"
   },
 
   // ---------- SCENE 6 — MEMORY GALLERY ----------
@@ -115,7 +115,7 @@ May this new year of your life be filled with massive wins, great health, infini
     lines: [
       "Here's to another year of epic conversations, random late-night plans, endless laughter, and surviving each other's nonsense!",
       "Keep shining, keep winning, and stay amazing as always! ✨",
-      "Happy Birthday, Brother! ❤️🎂"
+      "Happy Birthday, Bandarrr! ❤️🎂"
     ],
     replayButtonText: "Replay the Surprise ↻"
   },
