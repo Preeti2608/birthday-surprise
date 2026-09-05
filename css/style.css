@@ -1,0 +1,1397 @@
+/* ==========================================================
+   TOKENS
+   ========================================================== */
+:root{
+  --void: #05070b;
+  --navy: #0a1120;
+  --navy-2: #0f1a2e;
+  --brown-deep: #2c1c12;
+  --brown: #6b4429;
+  --brown-light: #9a6a3f;
+  --gold: #d8a84e;
+  --gold-bright: #f2c874;
+  --cream: #f3ead9;
+  --ember: #e2723a;
+  --purple: #5b3f7d;
+  --purple-light: #7c5aa6;
+
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --ease: cubic-bezier(.22,.9,.32,1);
+  --dur-s: .35s;
+  --dur-m: .7s;
+  --dur-l: 1.2s;
+
+  color-scheme: dark;
+}
+
+*,*::before,*::after{ box-sizing:border-box; }
+
+html,body{
+  margin:0; padding:0;
+  width:100%; height:100%;
+  overflow-x:hidden;
+  overscroll-behavior:none;
+  background:var(--void);
+  color:var(--cream);
+  font-family:var(--font-body);
+  -webkit-tap-highlight-color:transparent;
+}
+
+body{ min-height:100dvh; }
+
+h1,h2,h3,p{ margin:0; }
+
+button{
+  font-family:inherit;
+  border:none;
+  background:none;
+  color:inherit;
+  cursor:pointer;
+}
+
+::selection{ background:var(--gold); color:var(--void); }
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
+}
+
+/* ==========================================================
+   BACKGROUND — stars canvas + film grain
+   ========================================================== */
+#bg-canvas{
+  position:fixed; inset:0; z-index:0;
+  width:100%; height:100%;
+  background:
+    radial-gradient(ellipse at 50% -10%, #16233d 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 110%, #241407 0%, transparent 50%),
+    linear-gradient(180deg, var(--navy) 0%, var(--void) 60%, #030405 100%);
+}
+
+.grain{
+  position:fixed; inset:0; z-index:1;
+  pointer-events:none;
+  opacity:.035;
+  mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+#fx-canvas{
+  position:fixed; inset:0; z-index:50;
+  width:100%; height:100%;
+  pointer-events:none;
+}
+
+/* ==========================================================
+   HUD — progress + sound
+   ========================================================== */
+.hud{
+  position:fixed; top:0; left:0; right:0; z-index:40;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:max(14px, env(safe-area-inset-top)) 18px 0;
+  pointer-events:none;
+}
+
+.progress-track{
+  flex:1;
+  height:3px;
+  margin-right:16px;
+  border-radius:3px;
+  background:rgba(243,234,217,.12);
+  overflow:hidden;
+  max-width:420px;
+}
+.progress-track{ --p: 0%; }
+.progress-track::after{
+  content:"";
+  display:block; height:100%; width:var(--p, 0%);
+  background:linear-gradient(90deg, var(--brown-light), var(--gold-bright));
+  transition:width var(--dur-m) var(--ease);
+}
+
+.icon-btn{
+  pointer-events:auto;
+  width:42px; height:42px;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:50%;
+  background:rgba(15,20,30,.55);
+  backdrop-filter:blur(10px);
+  border:1px solid rgba(216,168,78,.25);
+  font-size:18px;
+  flex-shrink:0;
+  transition:transform var(--dur-s) var(--ease), border-color var(--dur-s);
+}
+.icon-btn:active{ transform:scale(.92); }
+.icon-btn .icon-on{ display:none; }
+.icon-btn[aria-pressed="true"] .icon-on{ display:inline; }
+.icon-btn[aria-pressed="true"] .icon-mute{ display:none; }
+
+/* ==========================================================
+   STAGE / SCENES
+   ========================================================== */
+#stage{ position:relative; z-index:2; width:100%; }
+
+.scene{
+  position:fixed; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  padding:32px 20px;
+  opacity:0; visibility:hidden;
+  pointer-events:none;
+  transform:scale(1.04);
+  filter:blur(6px);
+  transition:opacity var(--dur-l) var(--ease), transform var(--dur-l) var(--ease), filter var(--dur-l) var(--ease);
+}
+.scene.active{
+  opacity:1; visibility:visible;
+  pointer-events:auto;
+  transform:scale(1);
+  filter:blur(0);
+}
+.scene.leaving{
+  opacity:0;
+  transform:scale(.97);
+  filter:blur(6px);
+}
+
+.scene-inner{
+  width:100%;
+  max-width:560px;
+  display:flex; flex-direction:column; align-items:center;
+  text-align:center;
+  gap:18px;
+  max-height:92dvh;
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding:8px 4px 24px;
+  scrollbar-width:none;
+}
+.scene-inner::-webkit-scrollbar{ display:none; }
+
+.center-col{ justify-content:center; }
+
+/* ==========================================================
+   TYPOGRAPHY
+   ========================================================== */
+.line{
+  font-family:var(--font-display);
+  font-size:clamp(1.15rem, 4vw, 1.65rem);
+  font-weight:400;
+  line-height:1.45;
+  color:var(--cream);
+  opacity:0;
+  transform:translateY(10px);
+}
+.line.show{ animation:lineIn var(--dur-m) var(--ease) forwards; }
+
+@keyframes lineIn{
+  to{ opacity:1; transform:translateY(0); }
+}
+
+.tag{
+  font-family:var(--font-body);
+  font-size:.85rem;
+  letter-spacing:.03em;
+  color:var(--gold-bright);
+  opacity:0;
+}
+.tag.show{ animation:lineIn var(--dur-s) var(--ease) forwards; }
+
+.instruction{
+  font-family:var(--font-body);
+  font-size:1rem;
+  color:var(--brown-light);
+  opacity:.9;
+}
+
+.hint-text{ font-size:.9rem; color:var(--cream); opacity:.7; }
+
+.tap-hint{
+  font-size:.92rem;
+  color:var(--gold-bright);
+  opacity:.85;
+}
+
+/* Opening scene lines */
+.opening-lines{
+  display:flex; flex-direction:column; gap:14px;
+  min-height:140px; justify-content:center;
+}
+.opening-lines p{
+  font-family:var(--font-display);
+  font-size:clamp(1.3rem, 5vw, 2rem);
+  opacity:0;
+  transform:translateY(14px);
+}
+.opening-lines p.show{ animation:lineIn var(--dur-m) var(--ease) forwards; }
+
+/* ==========================================================
+   BUTTONS
+   ========================================================== */
+.btn{
+  min-height:52px;
+  padding:14px 28px;
+  border-radius:999px;
+  font-size:1rem;
+  font-weight:600;
+  letter-spacing:.01em;
+  transition:transform var(--dur-s) var(--ease), box-shadow var(--dur-s) var(--ease), opacity var(--dur-s);
+  touch-action:manipulation;
+}
+.btn:active{ transform:scale(.96); }
+
+.btn-primary{
+  background:linear-gradient(135deg, var(--gold-bright), var(--brown-light));
+  color:#1a1108;
+  box-shadow:0 8px 24px -8px rgba(216,168,78,.55);
+}
+.btn-primary:hover{ box-shadow:0 10px 30px -6px rgba(216,168,78,.7); }
+
+.btn-mic, .btn-hold{
+  background:rgba(243,234,217,.06);
+  border:1px solid rgba(216,168,78,.4);
+  color:var(--cream);
+}
+.btn-mic:hover, .btn-hold:hover{ border-color:var(--gold-bright); }
+
+.reveal-btn{
+  opacity:0;
+  animation:lineIn var(--dur-m) var(--ease) forwards;
+}
+
+/* generic fade-in wrapper used by JS for boxes */
+[hidden]{ display:none !important; }
+.fade-up-in{ animation:lineIn var(--dur-m) var(--ease) forwards; }
+
+.reveal-box{
+  display:flex; flex-direction:column; align-items:center; gap:16px;
+  background:rgba(15,20,30,.45);
+  backdrop-filter:blur(14px);
+  border:1px solid rgba(216,168,78,.18);
+  border-radius:24px;
+  padding:26px 22px;
+  width:100%;
+}
+
+.reveal-message{
+  font-family:var(--font-display);
+  font-size:clamp(1.05rem, 3.6vw, 1.35rem);
+  line-height:1.5;
+}
+
+/* ==========================================================
+   SCENE 2 — CAKE (3D VISUAL REDESIGN matching 🎂)
+   ========================================================== */
+.cake-scene-inner{
+  gap:20px;
+}
+
+.cake-header{
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+  min-height:60px;
+}
+
+.cake-wrap-3d{
+  position:relative;
+  width:min(290px, 75vw);
+  margin:55px auto 25px auto;
+  perspective:1000px;
+}
+
+.cake-3d{
+  position:relative; width:100%;
+  transform-style:preserve-3d;
+  animation:floatCake 4s ease-in-out infinite;
+  filter:drop-shadow(0 15px 25px rgba(0,0,0,0.5));
+}
+@keyframes floatCake{
+  0%,100%{ transform:translateY(0) rotateX(4deg); }
+  50%{ transform:translateY(-8px) rotateX(6deg); }
+}
+
+/* 3D Ceramic Plate */
+.cake-plate-3d{
+  position:absolute; bottom:-14px; left:50%; transform:translateX(-50%);
+  width:125%; height:28px;
+  background:radial-gradient(ellipse at 50% 30%, #ffffff 0%, #e2e8f0 65%, #94a3b8 100%);
+  border-radius:50%;
+  border:2px solid rgba(216,168,78,0.6);
+  box-shadow:0 22px 40px rgba(0,0,0,0.7), inset 0 2px 6px rgba(255,255,255,0.8);
+  z-index:0;
+}
+
+/* Cake Tiers */
+.cake-tier-3d{
+  position:relative; margin:0 auto;
+  border-radius:18px 18px 12px 12px;
+  overflow:hidden;
+  box-shadow:inset 0 6px 12px rgba(255,255,255,0.4), inset 0 -12px 18px rgba(0,0,0,0.4);
+}
+.tier-bottom{
+  width:100%; height:95px;
+  background:linear-gradient(180deg, #f7c5cc 0%, #e295a4 45%, #b85b70 100%);
+  z-index:1;
+}
+.tier-bottom .tier-stripe{
+  position:absolute; bottom:0; left:0; right:0; height:12px;
+  background:repeating-linear-gradient(90deg, #fff0f3, #fff0f3 12px, #f4acb7 12px, #f4acb7 24px);
+  border-top:2px solid rgba(255,255,255,0.5);
+}
+
+.tier-top{
+  width:76%; height:75px;
+  margin-top:-10px;
+  background:linear-gradient(180deg, #fff0f3 0%, #f4acb7 55%, #c96782 100%);
+  z-index:2;
+}
+
+/* 3D Chocolate & Strawberry Drip */
+.cake-drips-3d{
+  position:absolute; top:0; left:0; right:0; height:24px;
+  display:flex; justify-content:space-around;
+  pointer-events:none;
+}
+.cake-drips-3d span{
+  width:18%; height:22px;
+  background:linear-gradient(180deg, #4a2c17, #2c1a0e);
+  border-radius:0 0 10px 10px;
+  box-shadow:0 3px 6px rgba(0,0,0,0.4);
+}
+.cake-drips-3d span:nth-child(even){ height:30px; border-radius:0 0 14px 14px; }
+
+/* Cream Rosettes & Strawberries Toppings */
+.cake-toppings{
+  position:absolute; top:-16px; left:0; right:0;
+  display:flex; justify-content:space-evenly; align-items:center;
+  z-index:4;
+}
+.cherry{
+  font-size:1.6rem;
+  filter:drop-shadow(0 4px 6px rgba(0,0,0,0.4));
+  animation:bounceCherry 2.5s ease-in-out infinite alternate;
+}
+.cherry:nth-child(2){ animation-delay:0.4s; transform:scale(1.1); }
+@keyframes bounceCherry{
+  0%{ transform:translateY(0); }
+  100%{ transform:translateY(-4px); }
+}
+
+.cream-rosettes{
+  position:absolute; top:65px; left:12%; right:12%;
+  display:flex; justify-content:space-between;
+  z-index:3; pointer-events:none;
+}
+.cream-rosettes span{
+  width:14px; height:14px; border-radius:50%;
+  background:radial-gradient(circle at 35% 35%, #ffffff, #ffe4e8);
+  box-shadow:0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* 3D Wax Candles */
+.candles-3d{
+  position:absolute; top:-56px; left:0; right:0;
+  display:flex; justify-content:center; gap:20px;
+  z-index:10;
+}
+.candle-3d{
+  position:relative; width:12px; height:54px;
+  background:repeating-linear-gradient(135deg, #fff 0 6px, #ff6b81 6px 12px);
+  border-radius:6px 6px 2px 2px;
+  box-shadow:inset -2px 0 4px rgba(0,0,0,0.3), 0 6px 10px rgba(0,0,0,0.4);
+  transition:transform 0.2s var(--ease);
+}
+.candle-3d:nth-child(even){
+  background:repeating-linear-gradient(135deg, #fff 0 6px, #ffd166 6px 12px);
+}
+.candle-3d:nth-child(3){
+  background:repeating-linear-gradient(135deg, #fff 0 6px, #4cc9f0 6px 12px);
+}
+.candle-3d:hover{ transform:scale(1.15); }
+
+.candle-3d .wick{
+  position:absolute; top:-8px; left:50%; transform:translateX(-50%);
+  width:2px; height:8px; background:#222; border-radius:1px;
+}
+
+.candle-3d .flame-3d{
+  position:absolute; left:50%; top:-28px; transform:translateX(-50%);
+  width:16px; height:26px;
+  border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
+  background:radial-gradient(circle at 50% 80%, #ffffff 0%, #fff200 40%, #ff5500 80%, rgba(255,0,0,0) 100%);
+  box-shadow:0 0 18px 6px rgba(255,170,0,0.8), 0 0 35px 12px rgba(255,85,0,0.4);
+  animation:flicker3D 1.2s ease-in-out infinite alternate;
+  transform-origin:bottom center;
+  filter:drop-shadow(0 0 8px #ffaa00);
+}
+
+.candle-3d.out .flame-3d{ display:none !important; }
+.candle-3d.out::after{
+  content:""; position:absolute; top:-12px; left:50%; transform:translateX(-50%);
+  width:3px; height:6px; background:#3a2a1c; border-radius:2px;
+}
+
+@keyframes flicker3D{
+  0%{ transform:translateX(-50%) rotate(-3deg) scaleY(1); }
+  25%{ transform:translateX(-50%) rotate(3deg) scaleY(1.08) scaleX(0.95); }
+  50%{ transform:translateX(-50%) rotate(-1deg) scaleY(0.94) scaleX(1.04); }
+  75%{ transform:translateX(-50%) rotate(2deg) scaleY(1.05); }
+  100%{ transform:translateX(-50%) rotate(-2deg) scaleY(1); }
+}
+
+.smoke-layer{ position:absolute; top:-60px; left:0; right:0; height:120px; pointer-events:none; z-index:15; }
+.smoke-puff{
+  position:absolute; bottom:0;
+  width:12px; height:12px; border-radius:50%;
+  background:rgba(240,240,240,0.6);
+  filter:blur(4px);
+  animation:smokeRise 1.8s ease-out forwards;
+}
+@keyframes smokeRise{
+  0%{ opacity:0.7; transform:translateY(0) scale(1); }
+  100%{ opacity:0; transform:translateY(-80px) scale(2.8); }
+}
+
+.blow-controls{ display:flex; flex-direction:column; align-items:center; gap:12px; margin-top:10px; }
+
+.post-blow{ display:flex; flex-direction:column; align-items:center; gap:14px; }
+
+/* mic level indicator ring on hold button */
+#btn-hold-blow{ position:relative; overflow:hidden; }
+#btn-hold-blow.charging::before{
+  content:"";
+  position:absolute; inset:0; left:0;
+  background:rgba(226,114,58,.35);
+  width:var(--charge, 0%);
+  transition:width .1s linear;
+}
+
+/* ==========================================================
+   SCENE 3 — ENVELOPE
+   ========================================================== */
+.envelope{
+  position:relative;
+  width:min(320px, 86vw); height:170px;
+  margin:12px auto;
+  perspective:1200px;
+  transition:min-height var(--dur-l) var(--ease), margin var(--dur-l) var(--ease);
+}
+.envelope.open{
+  min-height:280px;
+  margin-top:10px;
+  margin-bottom:20px;
+}
+.envelope-back{
+  position:absolute; inset:0;
+  background:linear-gradient(160deg, #cbb27e, var(--brown-light));
+  border-radius:10px;
+  box-shadow:0 20px 40px -12px rgba(0,0,0,.6);
+}
+.envelope-front{
+  position:absolute; inset:0;
+  background:linear-gradient(160deg, #e7d3a3, var(--gold));
+  border-radius:10px;
+  clip-path:polygon(0 100%, 50% 45%, 100% 100%);
+  z-index:4;
+  pointer-events:none;
+}
+.envelope-flap{
+  position:absolute; top:0; left:0; right:0; height:90px;
+  background:linear-gradient(160deg, #f2e2b8, var(--gold-bright));
+  clip-path:polygon(0 0, 100% 0, 50% 78%);
+  transform-origin:top center;
+  border-radius:10px 10px 0 0;
+  transition:transform var(--dur-l) var(--ease);
+  z-index:5;
+}
+.envelope.open .envelope-flap{ transform:rotateX(180deg); }
+
+.wax-seal{
+  position:absolute; top:56px; left:50%; transform:translate(-50%,-50%);
+  width:34px; height:34px; border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, #c9793f, #8c3f22);
+  display:flex; align-items:center; justify-content:center;
+  color:var(--cream); font-size:14px;
+  box-shadow:0 4px 10px rgba(0,0,0,.4);
+  z-index:6;
+  transition:opacity var(--dur-s);
+}
+.envelope.open .wax-seal{ opacity:0; }
+
+.letter-card{
+  position:absolute; left:2%; right:2%; top:14px;
+  background:linear-gradient(180deg, #fcf8ee, #f3e6cd);
+  border:1px solid rgba(216,168,78,0.5);
+  border-radius:12px;
+  padding:22px 18px;
+  box-shadow:0 16px 36px rgba(0,0,0,.6);
+  transform:translateY(10px);
+  opacity:0;
+  transition:transform var(--dur-l) var(--ease), opacity var(--dur-l) var(--ease), max-height var(--dur-l) var(--ease);
+  z-index:2;
+  max-height:0;
+  overflow:hidden;
+}
+.envelope.open .letter-card{
+  transform:translateY(-20px);
+  opacity:1;
+  max-height:600px;
+  overflow:visible;
+  z-index:10;
+}
+.letter-text{
+  color:#241a10;
+  font-family:var(--font-display);
+  font-size:clamp(0.92rem, 3.2vw, 1.05rem);
+  line-height:1.7;
+  white-space:pre-line;
+  text-align:left;
+}
+
+#btn-open-envelope[data-used="true"]{ display:none; }
+
+.post-envelope{
+  display:flex; flex-direction:column; align-items:center; gap:14px;
+  margin-top:20px;
+  width:100%;
+}
+
+/* ==========================================================
+   SCENE 4 — CHOCOLATES (3D REALISTIC REDESIGN)
+   ========================================================== */
+.sweet-wrap{
+  display:flex; flex-direction:column; align-items:center; gap:14px;
+  cursor:pointer;
+  margin:10px 0;
+  perspective:1000px;
+}
+
+/* 1. Realistic Cadbury Éclairs Toffee */
+.eclairs-toffee{
+  position:relative;
+  width:240px; height:100px;
+  display:flex; align-items:center; justify-content:center;
+  filter:drop-shadow(0 14px 28px rgba(0,0,0,0.6));
+  transition:transform 0.3s var(--ease);
+}
+.eclairs-toffee:hover{ transform:scale(1.06) rotate(1deg); }
+
+/* Twisted Metallic Gold Foil Ends */
+.eclairs-wrapper-l, .eclairs-wrapper-r{
+  position:absolute; top:50%; z-index:1;
+  width:65px; height:65px;
+  background:linear-gradient(135deg, #fff7ad 0%, #ffd700 35%, #d4af37 60%, #996515 85%, #ffd700 100%);
+  box-shadow:inset 0 0 12px rgba(0,0,0,0.4);
+  transform:translateY(-50%);
+  transition:transform var(--dur-m) var(--ease), opacity var(--dur-m);
+}
+.eclairs-wrapper-l{
+  left:0;
+  clip-path:polygon(0 15%, 35% 35%, 100% 5%, 85% 50%, 100% 95%, 35% 65%, 0 85%);
+}
+.eclairs-wrapper-r{
+  right:0;
+  clip-path:polygon(0 5%, 65% 35%, 100% 15%, 100% 85%, 65% 65%, 0 95%, 15% 50%);
+}
+
+.eclairs-wrapper-l::before, .eclairs-wrapper-r::before{
+  content:""; position:absolute; inset:0;
+  background:repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(255,255,255,0.4) 4px, rgba(255,255,255,0.4) 8px);
+  mix-blend-mode:overlay;
+}
+
+/* Royal Purple Cadbury ECLAIRS Wrapper Body */
+.eclairs-body{
+  position:relative; z-index:2;
+  width:125px; height:68px; border-radius:35px / 34px;
+  background:radial-gradient(ellipse at 35% 30%, #6b24b2 0%, #3e1075 60%, #1c053a 100%);
+  box-shadow:
+    inset 0 6px 12px rgba(255,255,255,0.5),
+    inset 0 -8px 16px rgba(0,0,0,0.7),
+    0 10px 22px rgba(0,0,0,0.5);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  overflow:hidden;
+  transition:transform var(--dur-m) var(--ease), opacity var(--dur-m);
+}
+.eclairs-body::before{
+  content:""; position:absolute; top:4px; left:12px; right:12px; height:18px;
+  background:linear-gradient(180deg, rgba(255,255,255,0.35), transparent);
+  border-radius:20px;
+}
+
+.eclairs-brand{
+  font-family:"Fraunces", Georgia, serif;
+  font-style:italic;
+  font-weight:700;
+  font-size:1.15rem;
+  color:#fbd872;
+  text-shadow:0 2px 4px rgba(0,0,0,0.8), 0 0 10px rgba(251,216,114,0.4);
+  line-height:1;
+}
+.eclairs-name{
+  font-family:var(--font-body);
+  font-weight:800;
+  font-size:0.75rem;
+  letter-spacing:0.16em;
+  color:#ffffff;
+  text-shadow:0 2px 4px rgba(0,0,0,0.9);
+  margin-top:2px;
+}
+
+/* Unwrapped Caramel Chew Candy & Oozing Chocolate Lava */
+.eclairs-candy{
+  position:absolute; z-index:3;
+  width:115px; height:85px;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; transform:scale(0.3) rotate(-15deg);
+  pointer-events:none;
+  transition:all var(--dur-m) var(--ease);
+}
+
+.caramel-shell{
+  position:absolute; inset:0;
+  width:105px; height:80px; border-radius:50% 50% 48% 52% / 55% 45% 55% 45%;
+  background:radial-gradient(circle at 35% 30%, #f7bc68 0%, #d8892b 50%, #8e4708 100%);
+  box-shadow:
+    inset 0 6px 12px rgba(255,255,255,0.5),
+    inset -6px -8px 16px rgba(0,0,0,0.5),
+    0 14px 28px rgba(0,0,0,0.6);
+}
+.caramel-shell::after{
+  content:""; position:absolute; top:20px; right:15px; width:45px; height:45px;
+  border-radius:50%;
+  background:#260c04;
+  box-shadow:inset 0 4px 10px rgba(0,0,0,0.8);
+}
+
+.chocolate-lava{
+  position:absolute; top:24px; right:12px;
+  width:50px; height:46px; border-radius:50% 50% 60% 60%;
+  background:radial-gradient(circle at 30% 30%, #5e2c14 0%, #361708 65%, #180802 100%);
+  box-shadow:inset 0 3px 6px rgba(255,255,255,0.4), 0 8px 16px rgba(0,0,0,0.6);
+  z-index:4;
+}
+
+.lava-drip{
+  position:absolute; bottom:-16px; left:14px;
+  width:24px; height:26px;
+  border-radius:40% 40% 60% 60% / 30% 30% 70% 70%;
+  background:radial-gradient(circle at 30% 30%, #5e2c14 0%, #361708 70%, #180802 100%);
+  box-shadow:inset 0 2px 4px rgba(255,255,255,0.4), 0 6px 12px rgba(0,0,0,0.5);
+  animation:dripOoze 2.5s ease-in-out infinite alternate;
+}
+@keyframes dripOoze{
+  0%{ transform:scaleY(1) translateY(0); }
+  100%{ transform:scaleY(1.2) translateY(4px); }
+}
+
+/* Unwrapped States */
+.unwrapped .eclairs-wrapper-l{ transform:translate(-75px, -50px) rotate(-65deg) scale(0.4); opacity:0; }
+.unwrapped .eclairs-wrapper-r{ transform:translate(75px, -50px) rotate(65deg) scale(0.4); opacity:0; }
+.unwrapped .eclairs-body{ transform:scale(0) rotate(-180deg); opacity:0; }
+.unwrapped .eclairs-candy{ opacity:1; transform:scale(1.15) rotate(0deg); pointer-events:auto; }
+
+/* 2. Realistic KitKat Bar (Matching Images) */
+.kitkat-pack{
+  position:relative;
+  width:230px; height:110px;
+  display:flex; align-items:center; justify-content:center;
+  perspective:1000px;
+  margin:10px 0;
+}
+
+/* Red KitKat Wrapper (Before Opening) */
+.kitkat-wrapper{
+  position:absolute; inset:0;
+  z-index:2;
+  display:flex; align-items:center; justify-content:space-between;
+  background:linear-gradient(135deg, #e60012 0%, #d10010 50%, #99000c 100%);
+  border-radius:10px;
+  box-shadow:0 14px 28px rgba(0,0,0,0.6), inset 0 2px 4px rgba(255,255,255,0.4);
+  transition:transform var(--dur-l) var(--ease), opacity var(--dur-l) var(--ease);
+  overflow:hidden;
+}
+
+/* Crimped Sealed Foil Edges */
+.crimped-edge-l, .crimped-edge-r{
+  width:16px; height:100%;
+  background:repeating-linear-gradient(180deg, #99000c 0 3px, #e60012 3px 6px);
+  box-shadow:inset 0 0 4px rgba(0,0,0,0.4);
+}
+.crimped-edge-l{ border-right:1px solid rgba(0,0,0,0.3); }
+.crimped-edge-r{ border-left:1px solid rgba(0,0,0,0.3); }
+
+.kitkat-body{
+  flex:1; display:flex; align-items:center; justify-content:center;
+  position:relative; height:100%;
+}
+.kitkat-body::before{
+  content:""; position:absolute; top:0; left:0; right:0; height:35%;
+  background:linear-gradient(180deg, rgba(255,255,255,0.25), transparent);
+}
+
+/* Iconic White Oval Logo Badge */
+.kitkat-logo-oval{
+  background:#ffffff;
+  border:3px solid #e60012;
+  border-radius:50% / 60% 60% 40% 40%;
+  padding:6px 18px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  transform:rotate(-4deg);
+  box-shadow:0 4px 10px rgba(0,0,0,0.4);
+}
+.nestle-text{
+  font-family:"Fraunces", cursive;
+  font-style:italic;
+  font-size:0.65rem;
+  color:#e60012;
+  font-weight:bold;
+  line-height:1;
+}
+.kitkat-text{
+  font-family:var(--font-body);
+  font-weight:900;
+  font-size:1.45rem;
+  color:#e60012;
+  letter-spacing:-0.03em;
+  line-height:1;
+  text-shadow:1px 1px 0px rgba(255,255,255,0.8);
+  margin-top:-1px;
+}
+
+/* Snapped 3D Wafer Fingers (After Opening - Matching Image 2) */
+.kitkat-snapped{
+  position:absolute; inset:0;
+  z-index:3;
+  display:flex; align-items:center; justify-content:center; gap:20px;
+  opacity:0; transform:scale(0.4);
+  pointer-events:none;
+  transition:all var(--dur-l) var(--ease);
+}
+
+.finger{
+  position:relative; width:95px; height:50px;
+  background:linear-gradient(145deg, #5c3519 0%, #3a1d0d 65%, #200d04 100%);
+  border-radius:6px;
+  box-shadow:inset 0 3px 6px rgba(255,255,255,0.2), 0 10px 20px rgba(0,0,0,0.6);
+  display:flex; align-items:center; justify-content:center;
+}
+.finger-left{
+  transform:rotate(-18deg) translate(-8px, -4px);
+  border-right:none;
+}
+.finger-right{
+  transform:rotate(18deg) translate(8px, 4px);
+  border-left:none;
+}
+
+.finger-brand{
+  font-family:var(--font-body);
+  font-weight:900;
+  font-size:0.75rem;
+  letter-spacing:0.1em;
+  color:rgba(255,255,255,0.22);
+  text-shadow:1px 1px 2px rgba(0,0,0,0.8);
+  transform:rotate(-90deg);
+}
+
+/* Wafer Layers Cross Section at the Snap Break */
+.wafer-crosssection{
+  position:absolute; top:4px; bottom:4px; width:22px;
+  background:#3a1d0d;
+  display:flex; flex-direction:column; justify-content:space-evenly;
+  padding:3px;
+  box-shadow:inset 0 0 6px rgba(0,0,0,0.8);
+}
+.finger-left .wafer-crosssection{ right:-18px; border-radius:0 4px 4px 0; }
+.finger-right .wafer-crosssection{ left:-18px; border-radius:4px 0 0 4px; }
+
+.wafer-crosssection span{
+  height:5px;
+  background:linear-gradient(90deg, #e4ba80, #c89552);
+  border-radius:1px;
+  box-shadow:0 1px 1px rgba(0,0,0,0.4);
+}
+
+/* Flying Wafer Crumbs Effect */
+.crumbs-particles{
+  position:absolute; inset:0; pointer-events:none;
+}
+.crumbs-particles span{
+  position:absolute; top:50%; left:50%;
+  width:4px; height:4px; background:#e4ba80;
+  border-radius:50%;
+  opacity:0;
+}
+.unwrapped .crumbs-particles span:nth-child(1){ animation:crumb1 0.6s ease-out forwards; }
+.unwrapped .crumbs-particles span:nth-child(2){ animation:crumb2 0.6s ease-out forwards; }
+.unwrapped .crumbs-particles span:nth-child(3){ animation:crumb3 0.6s ease-out forwards; }
+.unwrapped .crumbs-particles span:nth-child(4){ animation:crumb4 0.6s ease-out forwards; }
+
+@keyframes crumb1{ 0%{ opacity:1; transform:translate(0,0); } 100%{ opacity:0; transform:translate(-30px,-25px); } }
+@keyframes crumb2{ 0%{ opacity:1; transform:translate(0,0); } 100%{ opacity:0; transform:translate(35px,-20px); } }
+@keyframes crumb3{ 0%{ opacity:1; transform:translate(0,0); } 100%{ opacity:0; transform:translate(-20px,30px); } }
+@keyframes crumb4{ 0%{ opacity:1; transform:translate(0,0); } 100%{ opacity:0; transform:translate(25px,25px); } }
+
+/* Unwrapped State */
+.unwrapped .kitkat-wrapper{ transform:translateY(-100px) rotate(-25deg) scale(0.4); opacity:0; }
+.unwrapped .kitkat-snapped{ opacity:1; transform:scale(1.15); pointer-events:auto; }
+
+/* 3. Realistic Cadbury Dairy Milk SILK Fruit & Nut (Matching Reference Image) */
+.silk-pack{
+  position:relative;
+  width:160px; height:260px;
+  display:flex; align-items:center; justify-content:center;
+  perspective:1000px;
+  margin:10px 0;
+}
+
+/* Silk Wrapper (Before Opening - Matching Image) */
+.silk-wrapper{
+  position:absolute; inset:0;
+  z-index:3;
+  display:flex; flex-direction:column; justify-content:space-between;
+  background:linear-gradient(175deg, #4d1c8c 0%, #2e0964 60%, #a60033 100%);
+  border-radius:12px;
+  box-shadow:0 18px 36px rgba(0,0,0,0.6), inset 0 3px 6px rgba(255,255,255,0.4);
+  transition:transform var(--dur-l) var(--ease), opacity var(--dur-l) var(--ease);
+  overflow:hidden;
+}
+
+.silk-crimp-top, .silk-crimp-bottom{
+  height:14px; width:100%;
+  background:repeating-linear-gradient(90deg, #a60033, #a60033 4px, #4d1c8c 4px, #4d1c8c 8px);
+  box-shadow:inset 0 0 4px rgba(0,0,0,0.5);
+}
+
+.silk-wrapper-body{
+  flex:1;
+  padding:8px 12px;
+  display:flex; flex-direction:column; align-items:center;
+  position:relative;
+}
+.silk-wrapper-body::before{
+  content:""; position:absolute; top:0; left:0; right:0; height:30%;
+  background:linear-gradient(180deg, rgba(255,255,255,0.25), transparent);
+}
+
+.silk-header-brand{
+  display:flex; flex-direction:column; align-items:center;
+  margin-top:4px;
+}
+.cadbury-logo{
+  font-family:"Fraunces", cursive;
+  font-style:italic;
+  font-size:0.95rem;
+  color:#fbd872;
+  text-shadow:0 1px 3px rgba(0,0,0,0.8);
+  line-height:1;
+}
+.dairymilk-logo{
+  font-family:var(--font-body);
+  font-weight:800;
+  font-size:1.05rem;
+  color:#ffffff;
+  text-shadow:0 2px 4px rgba(0,0,0,0.9);
+  line-height:1;
+  margin-top:1px;
+}
+
+/* Giant Golden Ribbon S SILK emblem */
+.silk-big-s{
+  position:relative;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  margin-top:6px;
+}
+.s-curve{
+  font-family:"Fraunces", Georgia, serif;
+  font-size:4.2rem;
+  font-weight:700;
+  color:#f2c874;
+  text-shadow:0 4px 10px rgba(0,0,0,0.6), 0 0 15px rgba(242,200,116,0.4);
+  line-height:0.8;
+  letter-spacing:-0.05em;
+}
+.silk-subtext{
+  position:absolute; bottom:14px;
+  font-family:var(--font-body);
+  font-weight:900;
+  font-size:0.75rem;
+  letter-spacing:0.18em;
+  color:#f2c874;
+  text-shadow:0 2px 4px rgba(0,0,0,0.9);
+}
+
+.silk-flavour{
+  font-family:var(--font-body);
+  font-weight:900;
+  font-size:0.78rem;
+  letter-spacing:0.14em;
+  color:#f2c874;
+  margin-top:8px;
+  text-shadow:0 2px 4px rgba(0,0,0,0.9);
+}
+
+.silk-graphics{
+  display:flex; gap:8px; margin-top:8px; font-size:1.4rem;
+  filter:drop-shadow(0 3px 6px rgba(0,0,0,0.5));
+}
+
+/* 3D Silk Chocolate Bar (Sliding Out After Opening - Matching Image) */
+.silk-bar-inner{
+  position:absolute; inset:0;
+  z-index:2;
+  background:linear-gradient(160deg, #6c3f1e 0%, #44220d 60%, #250f05 100%);
+  border-radius:10px;
+  box-shadow:inset 0 4px 8px rgba(255,255,255,0.25), 0 16px 32px rgba(0,0,0,0.7);
+  display:flex; flex-direction:column; justify-content:space-evenly;
+  padding:8px;
+  transition:all var(--dur-l) var(--ease);
+}
+
+.silk-segment{
+  height:32px;
+  background:linear-gradient(145deg, #7c4923 0%, #4a240e 100%);
+  border-radius:10px / 8px;
+  box-shadow:inset 0 3px 6px rgba(255,255,255,0.35), inset -2px -4px 6px rgba(0,0,0,0.6), 0 3px 6px rgba(0,0,0,0.4);
+  display:flex; align-items:center; justify-content:center;
+}
+.silk-segment span{
+  font-family:"Fraunces", Georgia, serif;
+  font-style:italic;
+  font-size:1.1rem;
+  font-weight:bold;
+  color:rgba(242,200,116,0.35);
+  text-shadow:1px 1px 1px rgba(0,0,0,0.8);
+}
+
+.fruit-nut-bits{
+  position:absolute; bottom:-8px; right:-8px;
+  display:flex; gap:4px;
+}
+
+/* Unwrapped State (Sliding Out - Matching Image) */
+.unwrapped .silk-wrapper{ transform:translateX(-100px) rotate(-10deg) scale(0.9); opacity:0.1; }
+.unwrapped .silk-bar-inner{ transform:translateX(55px) rotateY(-18deg) scale(1.08); z-index:5; box-shadow:0 22px 45px rgba(0,0,0,0.8); }
+
+/* 4. Realistic Credit Suisse 500g Gold Bar Ingot (Matching Reference Image) */
+.goldbar-pack{
+  position:relative;
+  width:170px; height:270px;
+  display:flex; align-items:center; justify-content:center;
+  perspective:1000px;
+  margin:10px 0;
+}
+
+/* Metallic Gold Foil Ingot Wrapper (Before Opening - Matching Image Left) */
+.goldbar-wrapper{
+  position:absolute; inset:0;
+  z-index:3;
+  background:linear-gradient(135deg, #fff3a3 0%, #ffd700 30%, #d4af37 55%, #aa7c11 80%, #ffd700 100%);
+  border-radius:18px;
+  box-shadow:
+    inset 0 4px 10px rgba(255,255,255,0.8),
+    inset -4px -6px 12px rgba(0,0,0,0.4),
+    0 18px 36px rgba(0,0,0,0.6);
+  border:1px solid #ffd700;
+  display:flex; align-items:center; justify-content:center;
+  transition:transform var(--dur-l) var(--ease), opacity var(--dur-l) var(--ease);
+}
+
+.goldbar-emboss, .chocolate-emboss{
+  width:82%; height:86%;
+  border:2px solid rgba(184,134,11,0.4);
+  border-radius:12px;
+  display:flex; flex-direction:column; align-items:center; justify-content:space-evenly;
+  padding:12px 6px;
+  text-align:center;
+  box-shadow:inset 0 2px 4px rgba(0,0,0,0.15), 0 2px 4px rgba(255,255,255,0.4);
+}
+
+.chocolate-emboss{
+  border-color:rgba(0,0,0,0.4);
+  box-shadow:inset 0 2px 4px rgba(255,255,255,0.1), 0 2px 4px rgba(0,0,0,0.6);
+}
+
+.goldbar-emboss .bank-name, .chocolate-emboss .bank-name{
+  font-family:var(--font-body);
+  font-weight:900;
+  font-size:1.05rem;
+  letter-spacing:0.08em;
+  line-height:1.1;
+}
+
+.goldbar-emboss .bank-name{
+  color:#7a5806;
+  text-shadow:1px 1px 1px rgba(255,255,255,0.6), -1px -1px 1px rgba(0,0,0,0.3);
+}
+.chocolate-emboss .bank-name{
+  color:#2b1408;
+  text-shadow:1px 1px 1px rgba(255,255,255,0.15), -1px -1px 2px rgba(0,0,0,0.8);
+}
+
+.goldbar-emboss .gold-weight, .chocolate-emboss .gold-weight{
+  font-family:var(--font-body);
+  font-weight:800;
+  font-size:1.6rem;
+  letter-spacing:0.04em;
+}
+
+.goldbar-emboss .gold-weight{
+  color:#6b4d03;
+  text-shadow:1px 1px 1px rgba(255,255,255,0.6), -1px -1px 1px rgba(0,0,0,0.3);
+}
+.chocolate-emboss .gold-weight{
+  color:#2b1408;
+  text-shadow:1px 1px 1px rgba(255,255,255,0.15), -1px -1px 2px rgba(0,0,0,0.8);
+}
+
+.goldbar-emboss .gold-purity, .chocolate-emboss .gold-purity{
+  font-family:var(--font-body);
+  font-weight:900;
+  font-size:1.25rem;
+  letter-spacing:0.12em;
+  line-height:1.1;
+}
+
+.goldbar-emboss .gold-purity{
+  color:#6b4d03;
+  text-shadow:1px 1px 1px rgba(255,255,255,0.6), -1px -1px 1px rgba(0,0,0,0.3);
+}
+.chocolate-emboss .gold-purity{
+  color:#2b1408;
+  text-shadow:1px 1px 1px rgba(255,255,255,0.15), -1px -1px 2px rgba(0,0,0,0.8);
+}
+
+.goldbar-emboss .gold-stamp, .chocolate-emboss .gold-stamp{
+  font-family:var(--font-body);
+  font-weight:700;
+  font-size:0.68rem;
+  letter-spacing:0.06em;
+  line-height:1.2;
+}
+
+.goldbar-emboss .gold-stamp{
+  color:#7a5806;
+  text-shadow:1px 1px 1px rgba(255,255,255,0.5);
+}
+.chocolate-emboss .gold-stamp{
+  color:#2b1408;
+  text-shadow:1px 1px 1px rgba(255,255,255,0.15);
+}
+
+/* Unwrapped Dark Chocolate Ingot Slab (After Opening - Matching Image Right) */
+.goldbar-chocolate{
+  position:absolute; inset:0;
+  z-index:2;
+  background:linear-gradient(150deg, #442413 0%, #2e170a 55%, #180b04 100%);
+  border-radius:18px;
+  box-shadow:
+    inset 0 4px 8px rgba(255,255,255,0.25),
+    inset -4px -6px 10px rgba(0,0,0,0.7),
+    0 18px 36px rgba(0,0,0,0.7);
+  display:flex; align-items:center; justify-content:center;
+  transition:all var(--dur-l) var(--ease);
+}
+
+/* Unwrapped Animation (Matching Image Transition) */
+.unwrapped .goldbar-wrapper{
+  transform:translateX(-105px) rotate(-14deg) scale(0.9);
+  opacity:0.15;
+}
+.unwrapped .goldbar-chocolate{
+  transform:translateX(55px) rotateY(-16deg) scale(1.08);
+  z-index:5;
+  box-shadow:0 24px 48px rgba(0,0,0,0.85);
+}
+
+
+/* Shake meter */
+.shake-meter{
+  width:min(240px, 65vw); height:10px; border-radius:10px;
+  background:rgba(243,234,217,0.12);
+  overflow:hidden;
+  box-shadow:inset 0 2px 4px rgba(0,0,0,0.4);
+}
+.shake-fill{
+  height:100%; width:0%;
+  background:linear-gradient(90deg, #7c449e, var(--gold-bright), #e2723a);
+  border-radius:10px;
+  transition:width 0.12s linear;
+}
+
+.post-shake{ display:flex; flex-direction:column; align-items:center; gap:14px; }
+
+/* ==========================================================
+   SCENE 5 — GIFT
+   ========================================================== */
+.gift-wrap{ position:relative; width:min(230px,60vw); height:190px; margin:10px auto; }
+.gift-glow{
+  position:absolute; inset:-40px; border-radius:50%;
+  background:radial-gradient(circle, rgba(242,200,116,0.35), transparent 70%);
+  animation:pulseGlow 3s ease-in-out infinite;
+}
+@keyframes pulseGlow{ 0%,100%{ opacity:.4; transform:scale(0.95); } 50%{ opacity:1; transform:scale(1.05); } }
+
+.gift-box{ position:relative; width:100%; height:100%; filter:drop-shadow(0 15px 25px rgba(0,0,0,0.5)); }
+.gift-base{
+  position:absolute; bottom:0; left:6%; right:6%; height:64%;
+  background:linear-gradient(160deg, var(--purple-light), var(--purple));
+  border-radius:10px;
+  box-shadow:0 16px 30px -10px rgba(0,0,0,.6);
+}
+.gift-lid{
+  position:absolute; top:24%; left:2%; right:2%; height:28%;
+  background:linear-gradient(160deg, #9b72cf, var(--purple-light));
+  border-radius:10px;
+  transform-origin:top center;
+  transition:transform var(--dur-l) var(--ease), opacity var(--dur-l) var(--ease);
+  z-index:3;
+  box-shadow:0 8px 16px rgba(0,0,0,0.4);
+}
+.gift-box.open .gift-lid{ transform:rotateX(140deg) translateY(-30px); opacity:0; }
+
+@keyframes giftShake{
+  0%,100%{ transform:translateX(0) rotate(0); }
+  20%{ transform:translateX(-8px) rotate(-4deg); }
+  40%{ transform:translateX(8px) rotate(4deg); }
+  60%{ transform:translateX(-6px) rotate(-3deg); }
+  80%{ transform:translateX(6px) rotate(3deg); }
+}
+.gift-box.shaking{ animation:giftShake .45s ease-in-out infinite; }
+
+.gift-ribbon-v{
+  position:absolute; top:0; bottom:0; left:50%; width:16%; transform:translateX(-50%);
+  background:linear-gradient(180deg, var(--gold-bright), var(--gold));
+  z-index:2;
+  box-shadow:0 0 10px rgba(0,0,0,0.2);
+}
+.gift-ribbon-h{
+  position:absolute; top:26%; left:0; right:0; height:24%;
+  background:linear-gradient(90deg, var(--gold-bright), var(--gold));
+  opacity:.95; z-index:2;
+}
+.gift-bow{
+  position:absolute; top:12%; left:50%; transform:translateX(-50%);
+  width:64px; height:38px;
+  z-index:4;
+  transition:transform var(--dur-m) var(--ease), opacity var(--dur-m);
+}
+.gift-bow::before, .gift-bow::after{
+  content:""; position:absolute; top:0; width:30px; height:38px;
+  background:linear-gradient(135deg, var(--gold-bright), var(--gold));
+  border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
+  box-shadow:0 4px 8px rgba(0,0,0,0.3);
+}
+.gift-bow::before{ left:0; transform:rotate(-28deg); }
+.gift-bow::after{ right:0; transform:rotate(28deg); }
+.gift-box.open .gift-bow{ transform:translate(-50%,-35px) scale(.5); opacity:0; }
+
+.letter-reveal{
+  display:flex; flex-direction:column; align-items:center; gap:18px;
+  width:100%;
+}
+.letter-paper{
+  width:100%;
+  background:linear-gradient(180deg, #fcf8ee, #f3e7ce);
+  border-radius:14px;
+  padding:28px 24px;
+  box-shadow:0 20px 40px -12px rgba(0,0,0,.6), inset 0 0 40px rgba(216,168,78,0.15);
+  max-height:46dvh;
+  overflow-y:auto;
+  border:1px solid rgba(216,168,78,0.3);
+}
+.letter-title{
+  font-family:var(--font-display);
+  font-size:1.25rem;
+  font-weight:600;
+  color:var(--brown-deep);
+  margin-bottom:12px;
+}
+.letter-body{
+  color:#22170d;
+  font-family:var(--font-display);
+  font-size:1.02rem;
+  line-height:1.75;
+  white-space:pre-line;
+  text-align:left;
+}
+.letter-signoff{
+  margin-top:18px;
+  font-family:var(--font-display);
+  font-style:italic;
+  font-weight:600;
+  color:var(--brown);
+  text-align:left;
+}
+
+/* ==========================================================
+   SCENE 6 — GALLERY (POLAROID CARDS & LIGHTBOX)
+   ========================================================== */
+.gallery-scene{ max-width:680px; }
+.gallery-track{
+  display:flex; gap:18px;
+  width:100%;
+  overflow-x:auto;
+  scroll-snap-type:x mandatory;
+  padding:12px 6px 22px;
+  -webkit-overflow-scrolling:touch;
+}
+.gallery-track::-webkit-scrollbar{ height:6px; }
+.gallery-track::-webkit-scrollbar-thumb{ background:var(--gold-bright); border-radius:6px; }
+
+.memory-card{
+  flex:0 0 min(250px, 75vw);
+  scroll-snap-align:center;
+  background:#fff;
+  border-radius:12px;
+  padding:12px 12px 16px;
+  box-shadow:0 12px 28px rgba(0,0,0,0.4);
+  cursor:pointer;
+  transition:transform 0.3s var(--ease), box-shadow 0.3s var(--ease);
+  position:relative;
+}
+.memory-card:nth-child(even){ transform:rotate(2deg); }
+.memory-card:nth-child(odd){ transform:rotate(-2deg); }
+.memory-card:hover{ transform:translateY(-8px) rotate(0deg) scale(1.03); box-shadow:0 20px 40px rgba(0,0,0,0.6); }
+
+.memory-card::before{
+  content:""; position:absolute; top:-8px; left:50%; transform:translateX(-50%);
+  width:60px; height:18px;
+  background:rgba(243,234,217,0.6);
+  backdrop-filter:blur(4px);
+  border:1px solid rgba(0,0,0,0.1);
+  box-shadow:0 2px 4px rgba(0,0,0,0.1);
+}
+
+.memory-photo{
+  width:100%; aspect-ratio:4/5;
+  background:linear-gradient(150deg, #1c2638, #2c1a0e);
+  border-radius:6px;
+  display:flex; align-items:center; justify-content:center;
+  color:rgba(243,234,217,.4);
+  font-size:2.2rem;
+  background-size:cover; background-position:center;
+  overflow:hidden;
+}
+.memory-caption{ padding:12px 4px 4px; font-family:var(--font-display); font-size:.98rem; color:#1a1108; font-weight:500; text-align:center; }
+.memory-date{ padding:0 4px 4px; font-size:.78rem; color:#7a5833; font-weight:600; text-align:center; }
+
+.gallery-dots{ display:flex; gap:8px; justify-content:center; margin-top:4px; }
+.gallery-dots span{ width:8px; height:8px; border-radius:50%; background:rgba(243,234,217,.3); transition:all var(--dur-s); }
+.gallery-dots span.active{ background:var(--gold-bright); transform:scale(1.4); }
+
+/* Gallery Lightbox */
+.lightbox-modal{
+  position:fixed; inset:0; z-index:100;
+  background:rgba(5,7,11,0.85);
+  backdrop-filter:blur(16px);
+  display:flex; align-items:center; justify-content:center;
+  padding:20px;
+  animation:fadeIn 0.3s var(--ease);
+}
+.lightbox-modal[hidden]{ display:none !important; }
+.lightbox-content{
+  position:relative;
+  background:#fff;
+  padding:16px 16px 20px;
+  border-radius:16px;
+  max-width:90vw; max-height:85vh;
+  display:flex; flex-direction:column; align-items:center;
+  box-shadow:0 25px 50px rgba(0,0,0,0.7);
+}
+.lightbox-close{
+  position:absolute; top:-16px; right:-16px;
+  width:40px; height:40px; border-radius:50%;
+  background:var(--gold-bright); color:#1a1108;
+  font-size:24px; font-weight:bold;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 4px 12px rgba(0,0,0,0.4);
+  cursor:pointer; z-index:10;
+}
+.lightbox-img-wrap{ width:100%; max-height:65vh; overflow:hidden; border-radius:10px; }
+.lightbox-img-wrap img{ width:100%; height:100%; object-fit:contain; max-height:65vh; }
+.lightbox-caption{ margin-top:12px; font-family:var(--font-display); font-size:1.1rem; color:#1a1108; text-align:center; }
+
+/* ==========================================================
+   SCENE 7 — FINAL
+   ========================================================== */
+.final-heading{
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:clamp(2rem, 9vw, 3.4rem);
+  line-height:1.2;
+  background:linear-gradient(135deg, #fff 0%, var(--gold-bright) 50%, #e2723a 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  opacity:0;
+  animation:lineIn var(--dur-l) var(--ease) forwards;
+  text-shadow:0 10px 30px rgba(216,168,78,0.3);
+}
+.final-lines{ display:flex; flex-direction:column; gap:16px; margin-top:10px; }
+.final-lines p{
+  font-family:var(--font-display);
+  font-size:clamp(1.05rem, 4.2vw, 1.3rem);
+  line-height:1.6;
+  opacity:0; transform:translateY(10px);
+}
+.final-lines p.show{ animation:lineIn var(--dur-m) var(--ease) forwards; }
+
+/* ==========================================================
+   FLOATING BALLOONS & SPARKLE CANVAS
+   ========================================================== */
+#sparkle-canvas{
+  position:fixed; inset:0; z-index:45;
+  pointer-events:none; width:100%; height:100%;
+}
+
+#balloons-container{
+  position:fixed; inset:0; z-index:35;
+  pointer-events:none; overflow:hidden;
+}
+
+.balloon{
+  position:absolute; bottom:-100px;
+  width:50px; height:65px;
+  border-radius:50% 50% 50% 50% / 40% 40% 60% 60%;
+  pointer-events:auto; cursor:pointer;
+  animation:floatUp 12s linear forwards;
+  filter:drop-shadow(0 6px 12px rgba(0,0,0,0.3));
+  transition:transform 0.15s ease;
+}
+.balloon:hover{ transform:scale(1.15); }
+.balloon::after{
+  content:""; position:absolute; bottom:-12px; left:50%; transform:translateX(-50%);
+  width:2px; height:16px; background:rgba(255,255,255,0.6);
+}
+@keyframes floatUp{
+  0%{ transform:translateY(0) rotate(0deg); opacity:0.9; }
+  100%{ transform:translateY(-115vh) rotate(15deg); opacity:0.2; }
+}
+.balloon-popped{
+  animation:balloonPop 0.2s ease-out forwards !important;
+}
+@keyframes balloonPop{
+  0%{ transform:scale(1); opacity:1; }
+  50%{ transform:scale(1.4); opacity:0.8; }
+  100%{ transform:scale(0); opacity:0; }
+}
+
+/* ==========================================================
+   RESPONSIVE TWEAKS & OVERLAP PREVENTION
+   ========================================================== */
+@media (min-width:820px){
+  .scene-inner{ gap:24px; max-width:620px; }
+  .btn{ padding:16px 36px; font-size:1.05rem; }
+}
+
+@media (max-height:680px){
+  .scene-inner{ gap:12px; padding-top:4px; padding-bottom:16px; }
+  .cake-wrap, .gift-wrap, .envelope{ transform:scale(0.88); margin:2px auto; }
+  .choc-bar-small, .choc-bar-purple, .choc-bar-big{ transform:scale(0.9); }
+}
+
+@media (orientation:landscape) and (max-height:500px){
+  .scene-inner{ max-height:98dvh; gap:8px; padding-bottom:10px; }
+  .line{ font-size:0.95rem; }
+}
+

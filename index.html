@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>A Surprise For You</title>
+<meta name="description" content="A little interactive birthday surprise.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- Ambient background: stars + glowing particles, always present -->
+<canvas id="bg-canvas"></canvas>
+<div class="grain"></div>
+
+<!-- Persistent controls -->
+<div class="hud">
+  <div class="progress-track" id="progress-track" aria-hidden="true"></div>
+  <button id="sound-toggle" class="icon-btn" aria-label="Toggle music" aria-pressed="false">
+    <span class="icon-mute">🔇</span>
+    <span class="icon-on">🔊</span>
+  </button>
+</div>
+
+<main id="stage">
+
+  <!-- SCENE 1 — OPENING -->
+  <section class="scene" id="scene-opening" data-scene="opening">
+    <div class="scene-inner center-col">
+      <div class="opening-lines" id="opening-lines"></div>
+      <button class="btn btn-primary reveal-btn" id="btn-enter" data-next="cake" hidden>Enter →</button>
+    </div>
+  </section>
+
+  <!-- SCENE 2 — CAKE -->
+  <section class="scene" id="scene-cake" data-scene="cake">
+    <div class="scene-inner center-col cake-scene-inner">
+      <div class="cake-header">
+        <p class="line line-pre" id="cake-line-1"></p>
+        <p class="line line-pre" id="cake-line-2"></p>
+      </div>
+
+      <div class="cake-wrap-3d" id="cake-wrap">
+        <div class="cake-3d">
+          <div class="cake-plate-3d"></div>
+          <div class="cake-tier-3d tier-bottom">
+            <div class="tier-frosting"></div>
+            <div class="tier-stripe"></div>
+          </div>
+          <div class="cake-tier-3d tier-top">
+            <div class="tier-frosting"></div>
+            <div class="cake-drips-3d">
+              <span></span><span></span><span></span><span></span><span></span>
+            </div>
+            <div class="cake-toppings">
+              <span class="cherry">🍓</span>
+              <span class="cherry">🍓</span>
+              <span class="cherry">🍓</span>
+            </div>
+          </div>
+          <div class="cream-rosettes">
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <div class="candles-3d" id="candles"></div>
+        </div>
+        <div class="smoke-layer" id="smoke-layer"></div>
+      </div>
+
+      <p class="instruction" id="cake-instruction">Blow out the candles (or tap them)! 🎂</p>
+
+      <div class="blow-controls" id="blow-controls">
+        <button class="btn btn-mic" id="btn-mic-try">🎤 Allow microphone to blow</button>
+        <button class="btn btn-hold" id="btn-hold-blow" hidden>Tap / hold here to blow them out →</button>
+        <p class="hint-text" id="mic-hint" hidden>No worries 😭 We'll do it the old-fashioned way.</p>
+      </div>
+
+      <div class="post-blow" id="cake-post" hidden>
+        <p class="line" id="cake-line-3"></p>
+        <p class="line" id="cake-line-4"></p>
+        <button class="btn btn-primary" data-next="envelope" hidden>Continue →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCENE 3 — ENVELOPE / FIRST MESSAGE -->
+  <section class="scene" id="scene-envelope" data-scene="envelope">
+    <div class="scene-inner center-col">
+      <p class="line line-pre" id="env-line-1"></p>
+      <p class="line line-pre" id="env-line-2"></p>
+
+      <div class="envelope" id="envelope">
+        <div class="envelope-back"></div>
+        <div class="letter-card" id="letter-card">
+          <p class="letter-text" id="env-message"></p>
+        </div>
+        <div class="envelope-flap"></div>
+        <div class="envelope-front"></div>
+        <div class="wax-seal">✦</div>
+      </div>
+
+      <button class="btn btn-primary" id="btn-open-envelope">Open it</button>
+
+      <div class="post-envelope" id="env-post" hidden>
+        <p class="line" id="env-line-3"></p>
+        <p class="line" id="env-line-4"></p>
+        <button class="btn btn-primary" data-next="choc-intro" hidden>Next →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCENE 4a — CHOCOLATE INTRO -->
+  <section class="scene" id="scene-choc-intro" data-scene="choc-intro">
+    <div class="scene-inner center-col">
+      <p class="line line-pre" id="choc-intro-line"></p>
+      <button class="btn btn-primary reveal-btn" id="btn-choc-intro-next" data-next="choc1" hidden>Continue →</button>
+    </div>
+  </section>
+
+  <!-- SCENE 4b — CHOCOLATE 1: TOFFEE (CADBURY ECLAIRS) -->
+  <section class="scene" id="scene-choc1" data-scene="choc1">
+    <div class="scene-inner center-col">
+      <p class="tag" id="choc1-level"></p>
+      <p class="line" id="choc1-tagline"></p>
+      <div class="sweet-wrap" id="toffee" data-tap="toffee">
+        <div class="eclairs-toffee">
+          <!-- Metallic Golden Twisted Ends -->
+          <div class="eclairs-wrapper-l"></div>
+          
+          <!-- Purple Cadbury Éclairs Wrapper Body -->
+          <div class="eclairs-body">
+            <span class="eclairs-brand">Cadbury</span>
+            <span class="eclairs-name">ÉCLAIRS</span>
+          </div>
+          
+          <div class="eclairs-wrapper-r"></div>
+
+          <!-- Unwrapped Caramel Chew Candy with Chocolate Liquid Lava -->
+          <div class="eclairs-candy">
+            <div class="caramel-shell"></div>
+            <div class="chocolate-lava">
+              <span class="lava-drip"></span>
+            </div>
+          </div>
+        </div>
+        <p class="tap-hint" id="toffee-hint">Tap to unwrap 🍬</p>
+      </div>
+      <div class="reveal-box" id="choc1-reveal" hidden>
+        <p class="reveal-message" id="choc1-message"></p>
+        <p class="line" id="choc1-after"></p>
+        <button class="btn btn-primary" data-next="choc2">Next chocolate →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCENE 4c — CHOCOLATE 2: KITKAT BAR -->
+  <section class="scene" id="scene-choc2" data-scene="choc2">
+    <div class="scene-inner center-col">
+      <p class="tag" id="choc2-level"></p>
+      <p class="line" id="choc2-tagline"></p>
+      <div class="sweet-wrap" id="choc2-item" data-tap="choc2">
+        <div class="kitkat-pack">
+          <!-- Red KitKat Wrapper (Before Opening) -->
+          <div class="kitkat-wrapper">
+            <div class="crimped-edge-l"></div>
+            <div class="kitkat-body">
+              <div class="kitkat-logo-oval">
+                <span class="nestle-text">Nestlé</span>
+                <span class="kitkat-text">KitKat</span>
+              </div>
+            </div>
+            <div class="crimped-edge-r"></div>
+          </div>
+
+          <!-- Snapped 3D Wafer Fingers (After Opening) -->
+          <div class="kitkat-snapped">
+            <div class="finger finger-left">
+              <span class="finger-brand">KitKat</span>
+              <div class="wafer-crosssection">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+            <div class="finger finger-right">
+              <span class="finger-brand">KitKat</span>
+              <div class="wafer-crosssection">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+            <div class="crumbs-particles">
+              <span></span><span></span><span></span><span></span>
+            </div>
+          </div>
+        </div>
+        <p class="tap-hint" id="choc2-instruction">Tap to snap & unwrap 🍫</p>
+      </div>
+      <div class="reveal-box" id="choc2-reveal" hidden>
+        <p class="reveal-message" id="choc2-message"></p>
+        <p class="line" id="choc2-after"></p>
+        <button class="btn btn-primary" data-next="choc3">Keep going →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCENE 4d — CHOCOLATE 3: DAIRY MILK SILK (FRUIT & NUT) -->
+  <section class="scene" id="scene-choc3" data-scene="choc3">
+    <div class="scene-inner center-col">
+      <p class="line" id="choc3-level"></p>
+      <p class="line" id="choc3-tagline"></p>
+
+      <div class="sweet-wrap" id="choc3-item">
+        <div class="silk-pack" id="choc3-bar">
+          <!-- Silk Wrapper (Before Opening - Matching Image) -->
+          <div class="silk-wrapper">
+            <div class="silk-crimp-top"></div>
+            <div class="silk-wrapper-body">
+              <div class="silk-header-brand">
+                <span class="cadbury-logo">Cadbury</span>
+                <span class="dairymilk-logo">Dairy Milk</span>
+              </div>
+              <div class="silk-big-s">
+                <span class="s-curve">S</span>
+                <span class="silk-subtext">SILK</span>
+              </div>
+              <div class="silk-flavour">FRUIT & NUT</div>
+              <div class="silk-graphics">
+                <span class="cashew-icon">🌰</span>
+                <span class="raisin-icon">🍇</span>
+              </div>
+            </div>
+            <div class="silk-crimp-bottom"></div>
+          </div>
+
+          <!-- Silk Chocolate Bar (Sliding Out After Opening - Matching Image) -->
+          <div class="silk-bar-inner">
+            <div class="silk-segment"><span>S</span></div>
+            <div class="silk-segment"><span>S</span></div>
+            <div class="silk-segment"><span>S</span></div>
+            <div class="silk-segment"><span>S</span></div>
+            <div class="silk-segment"><span>S</span></div>
+            <div class="silk-segment"><span>S</span></div>
+            <div class="fruit-nut-bits">
+              <span class="nut-bit"></span>
+              <span class="fruit-bit"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="instruction" id="choc3-shake-instruction">SHAKE YOUR PHONE OR TAP FAST! 📱⚡</p>
+      <div class="shake-meter" id="shake-meter"><div class="shake-fill" id="shake-fill"></div></div>
+      <button class="btn btn-hold" id="btn-shake-fallback">Tap repeatedly to shake! ⚡</button>
+
+      <div class="post-shake" id="choc3-post-shake" hidden>
+        <p class="line" id="choc3-shake-line1"></p>
+        <p class="line" id="choc3-shake-line2"></p>
+        <button class="btn btn-primary" id="btn-open-choc3" hidden>Unwrap Silk 💜</button>
+      </div>
+
+      <div class="reveal-box" id="choc3-reveal" hidden>
+        <p class="reveal-message" id="choc3-message"></p>
+        <p class="line" id="choc3-after"></p>
+        <button class="btn btn-primary" data-next="choc4">Obviously not →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCENE 4e — CHOCOLATE 4: CREDIT SUISSE GOLD BULLION BAR -->
+  <section class="scene" id="scene-choc4" data-scene="choc4">
+    <div class="scene-inner center-col">
+      <p class="tag" id="choc4-level"></p>
+      <p class="line" id="choc4-tagline"></p>
+      <p class="tap-hint" id="choc4-instruction">Tap to unwrap the gold ingot 👑</p>
+      <div class="sweet-wrap" id="choc4-item" data-tap="choc4">
+        <div class="goldbar-pack">
+          <!-- Metallic Gold Foil Ingot Wrapper (Before Opening - Matching Image 1) -->
+          <div class="goldbar-wrapper">
+            <div class="goldbar-emboss">
+              <span class="bank-name">CREDIT<br>SUISSE</span>
+              <span class="gold-weight">500g</span>
+              <span class="gold-purity">GOLD<br>999,9</span>
+              <span class="gold-stamp">✦ ESSAYEUR ✦<br>963873</span>
+            </div>
+          </div>
+
+          <!-- Unwrapped Embossed Dark Chocolate Gold Ingot (After Opening - Matching Image 2) -->
+          <div class="goldbar-chocolate">
+            <div class="chocolate-emboss">
+              <span class="bank-name">CREDIT<br>SUISSE</span>
+              <span class="gold-weight">500g</span>
+              <span class="gold-purity">GOLD<br>999,9</span>
+              <span class="gold-stamp">✦ ESSAYEUR ✦<br>963873</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="reveal-box" id="choc4-reveal" hidden>
+        <p class="reveal-message" id="choc4-message"></p>
+        <p class="line" id="choc4-after"></p>
+        <button class="btn btn-primary" data-next="gift">I want the final surprise →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCENE 5 — FINAL GIFT -->
+  <section class="scene" id="scene-gift" data-scene="gift">
+    <div class="scene-inner center-col">
+      <p class="line line-pre" id="gift-line-1"></p>
+      <p class="line line-pre" id="gift-line-2"></p>
+      <p class="line line-pre" id="gift-line-3"></p>
+
+      <div class="gift-wrap" id="gift-wrap">
+        <div class="gift-glow"></div>
+        <div class="gift-box" id="gift-box">
+          <div class="gift-lid" id="gift-lid"></div>
+          <div class="gift-base"></div>
+          <div class="gift-ribbon-v"></div>
+          <div class="gift-ribbon-h"></div>
+          <div class="gift-bow"></div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="btn-open-gift">Open the gift 🎁</button>
+
+      <div class="letter-reveal" id="letter-reveal" hidden>
+        <div class="letter-paper">
+          <p class="letter-title">A Birthday Letter 📜</p>
+          <p class="letter-body" id="gift-letter"></p>
+          <p class="letter-signoff" id="gift-signoff"></p>
+        </div>
+        <button class="btn btn-primary" data-next="gallery">See some memories →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCENE 6 — MEMORY GALLERY -->
+  <section class="scene" id="scene-gallery" data-scene="gallery">
+    <div class="scene-inner center-col gallery-scene">
+      <p class="line line-pre" id="gallery-line-1"></p>
+      <p class="line line-pre" id="gallery-line-2"></p>
+
+      <div class="gallery-track" id="gallery-track"></div>
+      <div class="gallery-dots" id="gallery-dots"></div>
+
+      <button class="btn btn-primary" data-next="final">Continue →</button>
+    </div>
+  </section>
+
+  <!-- SCENE 7 — FINAL SCREEN -->
+  <section class="scene" id="scene-final" data-scene="final">
+    <div class="scene-inner center-col">
+      <h1 class="final-heading" id="final-heading"></h1>
+      <div class="final-lines" id="final-lines"></div>
+      <button class="btn btn-primary" id="btn-replay">Replay the surprise ↻</button>
+    </div>
+  </section>
+
+</main>
+
+<!-- Interactive Floating Layers -->
+<div id="balloons-container"></div>
+<canvas id="sparkle-canvas"></canvas>
+<canvas id="fx-canvas"></canvas>
+
+<!-- Gallery Lightbox Modal -->
+<div id="gallery-lightbox" class="lightbox-modal" hidden>
+  <div class="lightbox-content">
+    <button class="lightbox-close" id="lightbox-close" aria-label="Close photo">&times;</button>
+    <div class="lightbox-img-wrap">
+      <img id="lightbox-img" src="" alt="Memory photo">
+    </div>
+    <p id="lightbox-caption" class="lightbox-caption"></p>
+  </div>
+</div>
+
+<audio id="bg-music" loop preload="none"></audio>
+<audio id="sfx-candle" preload="none"></audio>
+<audio id="sfx-unwrap" preload="none"></audio>
+<audio id="sfx-open" preload="none"></audio>
+<audio id="sfx-confetti" preload="none"></audio>
+
+<script src="js/config.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
